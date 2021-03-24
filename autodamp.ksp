@@ -1,0 +1,87 @@
+{*
+
+Auto damp (Korg Trident or Mono/Poly style)
+v. 0.2a (2017-04-19)
+by Kamil Baranski
+http://kamilbaranski.com/
+open source, public domain
+
+(The script was checked to work with Kontakt 5.6.5.)
+
+*}
+
+on init
+  make_perfview
+  set_ui_height(1)
+
+  declare $grp1_idx := 0
+  declare $grp2_idx := 1
+  declare $vol_env_idx
+  $vol_env_idx := find_mod($grp2_idx,"VOL_ENV")
+
+  declare ui_knob $releasetime (0,1000,1)
+  declare $defaultreleasetime
+  $defaultreleasetime := _get_engine_par($ENGINE_PAR_RELEASE, $grp1_idx, $vol_env_idx, -1)/1000
+  $releasetime := $defaultreleasetime
+  set_text ($releasetime,"Release time")
+  make_persistent($releasetime)
+
+  declare ui_switch $autodamp
+  $autodamp := 0
+  set_text ($autodamp,"Auto damp off")
+  make_persistent($autodamp)
+
+  declare ui_knob $dampknob (0,4000,1)
+  $dampknob := 1
+  set_text ($dampknob,"Damp time")
+  make_persistent($dampknob)
+
+  declare ui_button $default
+  set_text($default,"Set to defaults")
+end on
+
+function set_autodamptext
+  if ($autodamp=1)
+    set_text($autodamp,"Auto damp on")
+  else
+    set_text($autodamp,"Auto damp off")
+  end if
+end function
+
+function set_releasetime
+  _set_engine_par ($ENGINE_PAR_RELEASE, $releasetime*1000, $grp1_idx, $vol_env_idx, -1)
+  _set_engine_par ($ENGINE_PAR_RELEASE, $releasetime*1000, $grp2_idx, $vol_env_idx, -1)
+end function
+
+on persistence_changed
+  call set_autodamptext
+  call set_releasetime
+end on
+
+on ui_control($autodamp)
+  call set_autodamptext
+end on
+
+on ui_control($default)
+  $dampknob := 100
+  $releasetime := $defaultreleasetime
+  $autodamp := 1
+  call set_autodamptext
+  call set_releasetime
+  $default := 0
+end on
+
+on ui_control($releasetime)
+  call set_releasetime
+end on
+
+on note
+  {* shortening the release *}
+  if ($autodamp = 1)
+    fade_out(by_marks($MARK_1),$dampknob*1000,1)
+  end if  
+end on
+
+on release
+  set_event_mark($EVENT_ID,$MARK_1)
+end on
